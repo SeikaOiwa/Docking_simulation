@@ -17,7 +17,7 @@ autodock_vinaによるドッキングシミュレーション
 
 `conda create -n docking python`
 
-`conda activate -n docking`
+`conda activate docking`
 
 (2) 基本環境
 
@@ -49,16 +49,61 @@ autodock_vinaによるドッキングシミュレーション
 
 ・gitの「Docking_S」フォルダをダウンロードして使用を推奨
 
-![folder](./file/folder_structure.png)
+![folder](./file/folder_structure2.png)
 
 ## 5.使用方法
 
 (1) 作業環境構築
 
-gitから「BGC_pred」フォルダをダウンロード
+gitから「Docking_F」フォルダをダウンロード
 
 (2) streamlit起動
 
-BGC_Predフォルダ下で、下記コマンドを実行（local_hostが立ち上がる）
+Docking_Fフォルダ下で、下記コマンドを実行（local_hostが立ち上がる）
 
-`streamlit run st_pred_bgc.py`
+`conda activate docking`
+
+`streamlit run st_docking_simulation.py`
+
+(3) 酵素データの準備
+
+ 1) サイドバーのSTEP１ 酵素データの準備から、酵素の３次元データの拡張子を選択（.mol2もしくは.pdb）
+ 
+ 2) Docking_F/enzymeに酵素の３次元データを保存
+
+ 3) 「変換開始」ボタンを押すと、2)ファイル名と同じフォルダが生成し、その下に水素および電荷付加したファイル(.pdbqt)が保存
+
+(4) Ligandデータの準備
+ 
+ 1) サイドバーのSTEP2 Ligandデータの準備から、ligandデータのファイル型を選択（smilesもしくは.sdf）
+
+ 2) (smilesの場合)　[smilesデータリスト](./Docking_F/file/smiles.csv)（nameとsmiles列を持つcsvファイル）を作成、streamlit上にupload
+
+ 3) 複数のligandデータをひと纏めに保存するためのフォルダー名を指定
+
+ 4) 「変換開始」ボタンを押すと、3)で指定したフォルダが生成し、その下に水素および電荷付加したファイル(.pdbqt)が保存
+
+ (5) Docking simulationの準備
+
+ 1) サイドバーのstep3 Docking_simulationから、「条件設定」を選択
+
+ 2) ドッキング条件を記載した[csvファイル](./Docking_F/file/docking_condition%20.csv)をstreamlit上にアップロード
+
+ 3) プルダウンから該当する酵素を選択し、保存ボタンを押す
+
+ (6) Docking simulation
+ 
+  1) サイドバーのstep3 Docking_simulationから、「解析」を選択
+
+  2) 出力ファイル名を入力
+
+  3) ドッキングに使用する酵素、リガンドを選択
+
+  4) 開始ボタンを押し、ドッキングシミュレーションを開始
+
+## 6. 作業画面（フロント）
+
+![作業画面](./file/front_image.png)
+
+
+
