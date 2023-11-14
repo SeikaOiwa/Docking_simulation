@@ -1,4 +1,4 @@
-# Docking_simulation
+# Docking_Simulation
 autodock_vinaによるドッキングシミュレーション
 
 ## 1. 背景
@@ -49,7 +49,7 @@ autodock_vinaによるドッキングシミュレーション
 
 ・gitの「Docking_S」フォルダをダウンロードして使用を推奨
 
-![folder](./file/folder_structure.png)
+![folder](./file/Folder_structure.png)
 
 ## 5.使用方法
 
