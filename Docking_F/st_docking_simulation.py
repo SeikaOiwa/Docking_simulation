@@ -19,13 +19,14 @@ import subprocess
 import time
 import numpy as np
 
-log_path = '/home/seika_oiwa_3590/notebooks/Mydata_analysis/DockingSimulation/log'
-recept_path ='/home/seika_oiwa_3590/notebooks/Mydata_analysis/DockingSimulation/receptor'
-ligand_path = '/home/seika_oiwa_3590/notebooks/Mydata_analysis/DockingSimulation/ligand'
-file_path = '/home/seika_oiwa_3590/notebooks/Mydata_analysis/DockingSimulation/file'
-result_path = '/home/seika_oiwa_3590/notebooks/Mydata_analysis/DockingSimulation/Result'
-fig_path = '/home/seika_oiwa_3590/notebooks/Mydata_analysis/static/docking'
-download_path = '/home/seika_oiwa_3590/notebooks/box_path/bio_lab/Docking_simulation/'
+base_path = os.getcwd()
+log_path = f'{base_path}//log'
+recept_path =f'{base_path}/receptor'
+ligand_path = f'{base_path}/ligand'
+file_path = f'{base_path}/file'
+result_path = f'{base_path}/Result'
+fig_path = f'{base_path}/static'
+download_path = base_path
 
 def ready_enzyme(type):
    st.markdown(f"""
