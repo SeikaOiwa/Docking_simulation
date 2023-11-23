@@ -19,16 +19,13 @@ import subprocess
 import time
 import numpy as np
 
-base_path = os.getcwd()
-
-log_path = f'{base_path}//log'
-recept_path =f'{base_path}/receptor'
-ligand_path = f'{base_path}/ligand'
-file_path = f'{base_path}/file'
-result_path = f'{base_path}/Result'
-fig_path = f'{base_path}/static'
-download_path = base_path
-#download_path = '/home/seika_oiwa_3590/notebooks/box_path/bio_lab/Docking_simulation/'
+log_path = '/home/seika_oiwa_3590/notebooks/Mydata_analysis/DockingSimulation/log'
+recept_path ='/home/seika_oiwa_3590/notebooks/Mydata_analysis/DockingSimulation/receptor'
+ligand_path = '/home/seika_oiwa_3590/notebooks/Mydata_analysis/DockingSimulation/ligand'
+file_path = '/home/seika_oiwa_3590/notebooks/Mydata_analysis/DockingSimulation/file'
+result_path = '/home/seika_oiwa_3590/notebooks/Mydata_analysis/DockingSimulation/Result'
+fig_path = '/home/seika_oiwa_3590/notebooks/Mydata_analysis/static/docking'
+download_path = '/home/seika_oiwa_3590/notebooks/box_path/bio_lab/Docking_simulation/'
 
 def ready_enzyme(type):
    st.markdown(f"""
@@ -279,23 +276,21 @@ def simulation(denzyme_path,dligand_path,binding_cite,search_area,exhaustiveness
     --------
     add_docking_data : Antismash解析データから構築した既知二次代謝物をDocking simulation、結果を追加したデータフレームを返す
     """
+
     s_time = time.time()
     try:
-        re = subprocess.run(["python",f"{file_path}/docking.py",denzyme_path,
-                dligand_path,
-                ",".join(str(num) for num in binding_cite),
-                ",".join(str(num2) for num2 in search_area),
-                str(exhaustiveness),str(data_num),save_path],timeout=int(max_search_time),
-                           capture_output=True, check=True, encoding='utf-8')
-        e_time = time.time()
-        analysis_time = round((e_time-s_time)/60,1)
-        return 'finish', analysis_time
+      re = subprocess.run(["python",f"{file_path}/docking.py",denzyme_path,dligand_path,save_path,binding_cite,search_area,str(exhaustiveness),str(data_num)],timeout=int(max_search_time),capture_output=True, check=True, encoding='utf-8')
+        
+      e_time = time.time()
+      analysis_time = round((e_time-s_time)/60,1)
+        
+      return 'finish', analysis_time
        
     except subprocess.CalledProcessError as f:
-        return 'Error',f.stderr
+      return 'Error',f.stderr
     
     except subprocess.TimeoutExpired as e:
-        return 'time_out',''
+      return 'time_out',''
     
 def docking_simulation():
    st.markdown("""
@@ -336,15 +331,15 @@ def docking_simulation():
       for en in enzyme_name:
          os.makedirs(f'{result_path}/{fname}/{en}',exist_ok=True)
          df = pd.read_csv(f'{recept_path}/{en}/docking_condition.csv',skiprows=1)
-         lx = float(df.loc[0,'lx'])
-         ly = float(df.loc[0,'ly'])
-         lz = float(df.loc[0,'lz'])
-         binding_cite = [lx,ly,lz]
-         sx = float(df.loc[0,'sx'])
-         sy = float(df.loc[0,'sy'])
-         sz = float(df.loc[0,'sz'])
-         search_area = [sx,sy,sz]
-         exhaustiveness = int(df.loc[0,'ex_num'])
+         lx = df.loc[0,'lx']
+         ly = df.loc[0,'ly']
+         lz = df.loc[0,'lz']
+         binding_cite = f"{lx} {ly} {lz}"
+         sx = df.loc[0,'sx']
+         sy = df.loc[0,'sy']
+         sz = df.loc[0,'sz']
+         search_area = f"{sx} {sy} {sz}"
+         exhaustiveness = df.loc[0,'ex_num']
          #data_num = int(df.loc[0,'data_num'])
          data_num = 5        
          for lig_path in glob.glob(f'{select_ligand_path}/*.pdbqt'): 
@@ -355,8 +350,7 @@ def docking_simulation():
             save_path = f'{result_path}/{fname}/{en}/{lig_name}.pdbqt'
             max_search_time = 20*60
             # docking_simulation
-            result,analysis_time = simulation(denzyme_path,dligand_path,binding_cite,
-                                              search_area,exhaustiveness,data_num,save_path,max_search_time)
+            result,analysis_time = simulation(denzyme_path,dligand_path,binding_cite,search_area,exhaustiveness,data_num,save_path,max_search_time)
             
             if result == 'finish':
                # logに追記
