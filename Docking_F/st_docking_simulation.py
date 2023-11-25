@@ -18,15 +18,17 @@ from vina import Vina
 import subprocess
 import time
 import numpy as np
+import math
 
 base_path = os.getcwd()
 log_path = f'{base_path}//log'
-recept_path =f'{base_path}/receptor'
+recept_path =f'{base_path}/enzyme'
 ligand_path = f'{base_path}/ligand'
-file_path = f'{base_path}/file'
+file_path = f'{base_path}/scripts'
 result_path = f'{base_path}/Result'
 fig_path = f'{base_path}/static'
 download_path = base_path
+figure = f'{base_path}/file'
 
 def ready_enzyme(type):
    st.markdown(f"""
@@ -124,7 +126,7 @@ def ready_ligand_smiles():
      
    st.markdown(""" - :green[アップロード] """)
       
-   df = pd.read_csv(f'{file_path}/smiles.csv')
+   df = pd.read_csv(f'{figure}/smiles.csv')
    df.to_csv(buf := BytesIO(), index=True)
    st.download_button("雛型ダウンロード",buf.getvalue(),'smiles.csv',"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
    smile_list = st.file_uploader('smileデータ',type='csv',key='f')
@@ -232,10 +234,10 @@ def docking_condition():
    - 4) 取得データ数 10コ程度
    """)
    
-   df = pd.read_csv(f'{file_path}/docking_condition.csv')
+   df = pd.read_csv(f'{figure}/docking_condition.csv')
    df.to_csv(buf := BytesIO(), index=True)
    st.download_button("雛型ダウンロード",buf.getvalue(),'docking_condition.csv',"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-   st.image(f'{file_path}/fig2.png')
+   st.image(f'{figure}/fig2.png')
    st.markdown("""#### アップロード""")
    condition_data = st.file_uploader('アップローダー',type='csv',key='f')
    if condition_data:
@@ -250,48 +252,6 @@ def docking_condition():
       if gogo:
          df.to_csv(f'{recept_path}/{folder}/docking_condition.csv')
 
-def simulation(denzyme_path,dligand_path,binding_cite,search_area,exhaustiveness,data_num,save_path,max_search_time):
-    """autdock_vina を使ったdocking simulationを行い、dGを含むtmp.pdbqtが生成
-       1回のドッキングシミュレーションの制限時間はsearch_timeで規定、それ以上かかる場合は結合しないものと判断する
-
-    Parameters:
-    ----------
-    denzyme_path: str
-      enzyme data　path (/**.pdbqt)
-    dligand_path: str
-      ligand data　path (/**.pdbqt)
-    binding_cite: list,float
-      基質結合位置情報, [x,y,z]
-    search_area: list,float
-      リガンドの結合の探索範囲 [x,y,z]
-    exhaustiveness: int
-      探索回数, 低いと予測精度が落ちる（50>に設定)
-    data_num: int
-      取得データ数
-    save_path: str:
-      simulation結果の保存のパス（/usr/*/*/***.pdbpt)
-    max_search_time: int/str
-      Docking simulation (subprocess.run) の実行時間の上限値
-
-    See Also:
-    --------
-    add_docking_data : Antismash解析データから構築した既知二次代謝物をDocking simulation、結果を追加したデータフレームを返す
-    """
-
-    s_time = time.time()
-    try:
-      re = subprocess.run(["python",f"{file_path}/docking.py",denzyme_path,dligand_path,save_path,binding_cite,search_area,str(exhaustiveness),str(data_num)],timeout=int(max_search_time),capture_output=True, check=True, encoding='utf-8')
-        
-      e_time = time.time()
-      analysis_time = round((e_time-s_time)/60,1)
-        
-      return 'finish', analysis_time
-       
-    except subprocess.CalledProcessError as f:
-      return 'Error',f.stderr
-    
-    except subprocess.TimeoutExpired as e:
-      return 'time_out',''
     
 def docking_simulation():
    st.markdown("""
@@ -301,6 +261,10 @@ def docking_simulation():
    
    fname = st.text_input('(任意)','docking_result')
    
+   process_num = st.slider('プロセス数',1,20,1,1)
+   max_search_time_ = st.slider('解析時間の上限(分)',1,60,20,1)
+   max_search_time = max_search_time_ * 60
+
    st.markdown(""" - 酵素の選択 """)
    flist = os.listdir(f'{recept_path}')
    enzyme_name = st.multiselect('選択',flist)
@@ -317,63 +281,82 @@ def docking_simulation():
       
    st.markdown(""" - シミュレーション開始 """)
    go_simulation = st.button('開始')
+
+   # docking
    if go_simulation:
-      start = time.time()
-      #log用データフレーム作成
+      # log用
       data = []
       for en in enzyme_name:
          for lig_path in glob.glob(f'{select_ligand_path}/*.pdbqt'):
             lig_name = os.path.splitext(os.path.basename(lig_path))[0]
-            add_data = [en,lig_name,'']
+            add_data = [en,lig_name,'ready']
             data.append(add_data)
       log = pd.DataFrame(data=data,columns=['Enzyme','Ligand','Progress'])
       log.to_csv(f'{log_path}/docking_log.csv',index=False)
-    
+
       for en in enzyme_name:
          os.makedirs(f'{result_path}/{fname}/{en}',exist_ok=True)
-         df = pd.read_csv(f'{recept_path}/{en}/docking_condition.csv',skiprows=1)
-         lx = df.loc[0,'lx']
-         ly = df.loc[0,'ly']
-         lz = df.loc[0,'lz']
-         binding_cite = f"{lx} {ly} {lz}"
-         sx = df.loc[0,'sx']
-         sy = df.loc[0,'sy']
-         sz = df.loc[0,'sz']
-         search_area = f"{sx} {sy} {sz}"
-         exhaustiveness = df.loc[0,'ex_num']
-         #data_num = int(df.loc[0,'data_num'])
-         data_num = 5        
+         shutil.copy2(f'{select_ligand_path}/smile_list.csv',f'{result_path}/{fname}/smile_list.csv')       
          for lig_path in glob.glob(f'{select_ligand_path}/*.pdbqt'): 
-            lig_name = os.path.splitext(os.path.basename(lig_path))[0]    
+            lig_name = os.path.splitext(os.path.basename(lig_path))[0]  
+
             # docking_引数
             denzyme_path = f'{recept_path}/{en}/{en}.pdbqt'
+            doc_path =  f'{recept_path}/{en}/docking_condition.csv'
             dligand_path = lig_path
-            save_path = f'{result_path}/{fname}/{en}/{lig_name}.pdbqt'
-            max_search_time = 20*60
-            # docking_simulation
-            result,analysis_time = simulation(denzyme_path,dligand_path,binding_cite,search_area,exhaustiveness,data_num,save_path,max_search_time)
-            
-            if result == 'finish':
-               # logに追記
-               subprocess.run(["python",f"{file_path}/input_log.py",f'{log_path}/docking_log.csv',
-                               'Enzyme','Ligand','Progress',en,lig_name,str(analysis_time)]) 
-       
-               shutil.copy2(f'{ligand_path}/{select_ligand}/smile_list.csv',f'{result_path}/{fname}/{en}/')
-        
-            if result == 'Error':
-               subprocess.run(["python",f"{file_path}/input_log.py",f'{log_path}/docking_log.csv',
-                               'Enzyme','Ligand','Progress',en,lig_name,str(analysis_time)])           
-        
-            if result == 'time_out':
-               subprocess.run(["python",f"{file_path}/input_log.py",f'{log_path}/docking_log.csv',
-                               'Enzyme','Ligand','Progress',en,lig_name,'Time_out'])    
-         
-         end = time.time()
-         total_time = round((end-start)/60,1)
-         # 解析時間の書き出し
-         with open(f'{log_path}/total_time.txt','w') as f:
-            f.write(f'解析時間（分）：{total_time}')
-         st.write(f'Docking_simulation_time = {total_time}')
+            save_path = f'{result_path}/{fname}'
+
+            # docking_simulation(multi process)
+            procs = {}
+            while sum(proc.poll() is None for n,proc in procs.items())>=process_num:
+               time.sleep(1)
+            proc = subprocess.Popen(["python",f"{file_path}/pre_docking.py",
+            en,
+            lig_name,
+            denzyme_path,
+            doc_path,
+            dligand_path,
+            save_path,
+            file_path,
+            "--max_time",str(max_search_time)
+            ],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+
+            procs[f'{en}_{lig_name}']= proc
+
+def confirm_progress():
+   st.markdown("""
+   ## STEP3: 解析状況の確認
+   - Docking simulationデータの選択
+   """)
+   result_list = os.listdir(f'{result_path}')
+   add = ['-選択-']
+   result_list2 = add + result_list
+   select_result = st.selectbox('解析データ選択',result_list2)
+
+   go = st.button('解析状況の確認')
+   if go:
+      # 解析総数の確認
+      analysis_list = pd.read_csv(f'{log_path}/docking_log.csv')
+      total_num = len(analysis_list)
+      # 進捗状況まとめ
+      # 完了
+      success_num = len([i for i in glob.glob(f'{result_path}/{select_result}/**/*/*.pdbqt',recursive=True)])
+      # time_out or error
+      logs = [pd.read_csv(log) for log in glob.glob(f'{result_path}/docking_result/**/*/log.csv',recursive=True)]
+      log_df_ = pd.concat(logs,axis=0)
+      log_df = log_df_.reset_index()
+      timeout_num = len(log_df[log_df['Progress'].str.contains('Time_out',na=False)])
+      error_num = len(log_df[log_df['Progress'].str.contains('trace',na=False)])
+
+      finish_ratio = math.floor((success_num + timeout_num +error_num)/total_num *100)
+
+      # 進捗状況表示
+      st.progress(finish_ratio,text='進捗率(%)')
+      st.markdown("""#### 内訳""")
+      st.write(f'総解析：{total_num} 個')
+      st.write(f'データ生成：{success_num} 個 ({round(success_num/total_num*100,1)}%)')
+      st.write(f'エラー：{error_num} 個 ({round(error_num/total_num*100,1)}%)')
+      st.write(f'解析中断：{timeout_num} 個 ({round(timeout_num/total_num*100,1)}%)')
          
 def view_structure(dataframe):
  
@@ -393,7 +376,7 @@ def view_structure(dataframe):
       fig_path2 = f'{fig_path}/{lig_name}.png'
       
       #画像表示用のパス
-      path = f'./app/static/docking/{lig_name}.png'
+      path = f'./app/static/{lig_name}.png'
       describe_fig_path.append(path)
       
       #smile⇒二次構造
@@ -407,20 +390,14 @@ def view_structure(dataframe):
    #画像入りデータフレームの表示
    st.data_editor(
     dataframe2,
-    column_config={
-        "apps": st.column_config.ImageColumn(
-            "Preview Image", 
-         help="Streamlit app preview screenshots"
-        )
-    },
-    hide_index=True,
-)
+    column_config={"apps": st.column_config.ImageColumn("Preview Image", help="Streamlit app preview screenshots")},
+    hide_index=True,)
       
 def calculate_data(select_result,select_enzyme):
    
    all_docking = []
      
-   for i in glob.glob(f'{result_path}/{select_result}/{select_enzyme}/*.pdbqt'):         
+   for i in glob.glob(f'{result_path}/{select_result}/{select_enzyme}/**/*.pdbqt',recursive=True):         
       df = pd.read_table(i)
       df2 = df[df['MODEL 1'].str.contains('RESULT')]
       df3 = df2.reset_index(drop=True)
@@ -435,7 +412,7 @@ def calculate_data(select_result,select_enzyme):
    result = pd.DataFrame(all_docking)
    result = result.set_axis(['Enzyme','ligand','dG'],axis='columns',copy=False).sort_values('dG',ascending=False)
      
-   add_smile = pd.read_csv(f'{result_path}/{select_result}/{select_enzyme}/smile_list.csv')
+   add_smile = pd.read_csv(f'{result_path}/{select_result}/smile_list.csv')
    
    merge_data = pd.merge(result,add_smile, left_on='ligand',right_on='name', how='left')
    merge_data2 = merge_data[['Enzyme','ligand','dG','smiles']]
@@ -464,10 +441,7 @@ def calculate_data(select_result,select_enzyme):
       
       merge_data3.to_excel(buf := BytesIO(), index=True)
       st.download_button("Download (画像なし)",buf.getvalue(),f"{select_enzyme}_ligand_Docking.xlsx","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-      
-   
-
-   
+         
 def confirm_result():
    st.markdown("""
    ## STEP4: 解析結果の確認
@@ -480,6 +454,7 @@ def confirm_result():
    
    if select_result != '-選択-':
       result_enzyme_list_p = os.listdir(f'{result_path}/{select_result}')
+      result_enzyme_list_p.remove('smile_list.csv')
       result_enzyme_list = add + result_enzyme_list_p
       select_enzyme = st.selectbox('酵素選択',result_enzyme_list)
       if select_enzyme != '-選択-': 
@@ -496,12 +471,12 @@ select = st.sidebar.selectbox('入力データの選択',['-select-','.mol2','.p
 st.sidebar.subheader('STEP2: Ligandデータの準備')
 select2 = st.sidebar.selectbox('入力データの選択',['-select-','smiles','.sdf'])
 st.sidebar.subheader('STEP3: Docking_simulation')
-select3 = st.sidebar.selectbox('選択',['-select-','条件設定','解析'])
+select3 = st.sidebar.selectbox('選択',['-select-','条件設定','解析','進捗確認'])
 st.sidebar.subheader('STEP4: 解析結果の確認')
 select4 = st.sidebar.selectbox('選択',['-select-','解析結果の確認'])
 
 st.markdown(""" # :green[Docking Simulation Tool] """)
-st.image(f'{file_path}/fig.png')
+st.image(f'{figure}/fig.png')
 
 if select == '.mol2':
    ready_enzyme('mol2')
@@ -520,6 +495,9 @@ if select3 == '条件設定':
 
 if select3 == '解析':
    docking_simulation()
+   
+if select3 == '進捗確認':
+   confirm_progress()
 
 if select4 == '解析結果の確認':
    confirm_result()
