@@ -284,15 +284,13 @@ def docking_simulation():
 
    # docking
    if go_simulation:
-      # log用
-      data = []
-      for en in enzyme_name:
-         for lig_path in glob.glob(f'{select_ligand_path}/*.pdbqt'):
-            lig_name = os.path.splitext(os.path.basename(lig_path))[0]
-            add_data = [en,lig_name,'ready']
-            data.append(add_data)
-      log = pd.DataFrame(data=data,columns=['Enzyme','Ligand','Progress'])
-      log.to_csv(f'{log_path}/docking_log.csv',index=False)
+      # 進捗確認用
+      os.makedirs(f'{result_path}/{fname}',exist_ok=True)      
+      en_num = len(enzyme_name) 
+      lig_num = len([i for i in glob.glob(f'{select_ligand_path}/*.pdbqt',recursive=True)])
+      total_analysis_num = en_num * lig_num
+      with open(f'{result_path}/{fname}/total_analysis_num.txt','a') as f:
+         f.write(f'total_analysis_num {total_analysis_num}')
 
       for en in enzyme_name:
          os.makedirs(f'{result_path}/{fname}/{en}',exist_ok=True)
@@ -308,8 +306,8 @@ def docking_simulation():
 
             # docking_simulation(multi process)
             procs = {}
-            while sum(proc.poll() is None for n,proc in procs.items())>=process_num:
-               time.sleep(1)
+            while sum(proc.poll() is None for n,proc in procs.items())>=int(process_num):
+               time.sleep(10)
             proc = subprocess.Popen(["python",f"{file_path}/pre_docking.py",
             en,
             lig_name,
@@ -336,23 +334,26 @@ def confirm_progress():
    go = st.button('解析状況の確認')
    if go:
       # 解析総数の確認
-      analysis_list = pd.read_csv(f'{log_path}/docking_log.csv')
-      total_num = len(analysis_list)
+      with open(f'{result_path}/{select_result}/total_analysis_num.txt','r') as f:
+         num = f.read()
+         total_num = int(num.split(" ")[1])
+
       # 進捗状況まとめ
       # 完了
       success_num = len([i for i in glob.glob(f'{result_path}/{select_result}/**/*/*.pdbqt',recursive=True)])
       # time_out or error
-      logs = [pd.read_csv(log) for log in glob.glob(f'{result_path}/docking_result/**/*/log.csv',recursive=True)]
+      logs = [pd.read_csv(log) for log in glob.glob(f'{result_path}/**/*/*/log.csv',recursive=True)]
       log_df_ = pd.concat(logs,axis=0)
       log_df = log_df_.reset_index()
-      timeout_num = len(log_df[log_df['Progress'].str.contains('Time_out',na=False)])
-      error_num = len(log_df[log_df['Progress'].str.contains('trace',na=False)])
+      timeout_num = len(log_df[log_df['Progress'].str.contains('Time_out')])
+      error_num = len(log_df[log_df['Progress'].str.contains('Error')])
 
       finish_ratio = math.floor((success_num + timeout_num +error_num)/total_num *100)
 
       # 進捗状況表示
-      st.progress(finish_ratio,text='進捗率(%)')
-      st.markdown("""#### 内訳""")
+      st.write(f'進捗率：{finish_ratio} %')
+      st.progress(finish_ratio,text='')
+      st.markdown("""#### (内訳)""")
       st.write(f'総解析：{total_num} 個')
       st.write(f'データ生成：{success_num} 個 ({round(success_num/total_num*100,1)}%)')
       st.write(f'エラー：{error_num} 個 ({round(error_num/total_num*100,1)}%)')

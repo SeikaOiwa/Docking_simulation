@@ -167,7 +167,7 @@ if result == 'Error':
     subprocess.run(["python",f"{file_path}/input_log.py",
     save_f_path,
     col_n,
-    f"{en_name} {lig_name} {str(analysis_time)}"])           
+    f"{en_name} {lig_name} Error"])           
 
 if result == 'time_out':
     subprocess.run(["python",f"{file_path}/input_log.py",
