@@ -261,7 +261,7 @@ def docking_simulation():
    
    fname = st.text_input('(任意)','docking_result')
    
-   process_num = st.slider('プロセス数',1,20,1,1)
+   process_num = st.slider('プロセス数',1,100,1,1)
    max_search_time_ = st.slider('解析時間の上限(分)',1,60,20,1)
    max_search_time = max_search_time_ * 60
 
@@ -292,6 +292,9 @@ def docking_simulation():
       with open(f'{result_path}/{fname}/total_analysis_num.txt','a') as f:
          f.write(f'total_analysis_num {total_analysis_num}')
 
+      # multi_process数管理用
+      procs = {}
+
       for en in enzyme_name:
          os.makedirs(f'{result_path}/{fname}/{en}',exist_ok=True)
          shutil.copy2(f'{select_ligand_path}/smile_list.csv',f'{result_path}/{fname}/smile_list.csv')       
@@ -305,9 +308,8 @@ def docking_simulation():
             save_path = f'{result_path}/{fname}'
 
             # docking_simulation(multi process)
-            procs = {}
             while sum(proc.poll() is None for n,proc in procs.items())>=int(process_num):
-               time.sleep(10)
+               time.sleep(1)
             proc = subprocess.Popen(["python",f"{file_path}/pre_docking.py",
             en,
             lig_name,
