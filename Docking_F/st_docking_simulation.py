@@ -261,6 +261,7 @@ def docking_simulation():
    
    fname = st.text_input('(任意)','docking_result')
    
+   st.markdown(""" - プロセス条件の設定 """)   
    process_num = st.slider('プロセス数',1,100,1,1)
    max_search_time_ = st.slider('解析時間の上限(分)',1,60,20,1)
    max_search_time = max_search_time_ * 60
@@ -289,8 +290,12 @@ def docking_simulation():
       en_num = len(enzyme_name) 
       lig_num = len([i for i in glob.glob(f'{select_ligand_path}/*.pdbqt',recursive=True)])
       total_analysis_num = en_num * lig_num
+      start_t = time.time()
       with open(f'{result_path}/{fname}/total_analysis_num.txt','a') as f:
          f.write(f'total_analysis_num {total_analysis_num}')
+      
+      with open(f'{result_path}/{fname}/time_record.txt','a') as f2:
+         f2.write(f'start {time.time()}')
 
       # multi_process数管理用
       procs = {}
@@ -322,6 +327,9 @@ def docking_simulation():
             ],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
 
             procs[f'{en}_{lig_name}']= proc
+      
+      with open(f'{result_path}/{fname}/time_record.txt','a') as f2:
+         f2.write(f' end {time.time()}')
 
 def confirm_progress():
    st.markdown("""
@@ -340,6 +348,18 @@ def confirm_progress():
       with open(f'{result_path}/{select_result}/total_analysis_num.txt','r') as f:
          num = f.read()
          total_num = int(num.split(" ")[1])
+      
+      # 解析時間の確認
+      with open(f'{result_path}/{select_result}/time_record.txt','r') as f2:
+         time_record_ = f2.read()
+      
+      time_record = time_record_.split(" ")
+      if len(time_record) == 2:
+         # 解析中
+         total_time = float(time.time()) - float(time_record[1])
+      else:
+         # 解析完了
+         total_time = float(time_record[3]) - float(time_record[1])
 
       # 進捗状況まとめ
       # 完了
@@ -353,19 +373,12 @@ def confirm_progress():
 
       finish_ratio = math.floor((success_num + timeout_num +error_num)/total_num *100)
 
-      # 実行時間の計算
-      process_time = 0
-      for i in log_df['Progress']:
-         if i == 'Time_out':
-            process_time += float(max_search_time)
-         if i != 'Error' and i != 'Time_out':
-            process_time += float(i)
-
       # 進捗状況表示
       st.write('--------------')
       st.subheader(f'現在の進捗率：{finish_ratio} %')
       st.progress(finish_ratio,text='')
-      st.write(f'実行時間：{round(process_time/60,1)} 時間')
+      st.write(f'実行時間（時間表示）：{round(total_time/3600,1)} 時間')
+      st.write(f'実行時間（分表示）：{round(total_time/60,1)} 分')       
       st.write('--------------')
       st.markdown("""#### (内訳)""")
       st.write(f'総解析数：{total_num} 個')
