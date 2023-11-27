@@ -332,6 +332,7 @@ def confirm_progress():
    add = ['-選択-']
    result_list2 = add + result_list
    select_result = st.selectbox('解析データ選択',result_list2)
+   max_search_time = st.number_input('解析時間の上限値(分)',20)
 
    go = st.button('解析状況の確認')
    if go:
@@ -344,22 +345,42 @@ def confirm_progress():
       # 完了
       success_num = len([i for i in glob.glob(f'{result_path}/{select_result}/**/*/*.pdbqt',recursive=True)])
       # time_out or error
-      logs = [pd.read_csv(log) for log in glob.glob(f'{result_path}/**/*/*/log.csv',recursive=True)]
+      logs = [pd.read_csv(log) for log in glob.glob(f'{result_path}/{select_result}/**/*/log.csv',recursive=True)]
       log_df_ = pd.concat(logs,axis=0)
       log_df = log_df_.reset_index()
-      timeout_num = len(log_df[log_df['Progress'].str.contains('Time_out')])
-      error_num = len(log_df[log_df['Progress'].str.contains('Error')])
+      timeout_num = len(log_df[log_df['Progress'].str.contains('Time_out',na=False)])
+      error_num = len(log_df[log_df['Progress'].str.contains('Error',na=False)])
 
       finish_ratio = math.floor((success_num + timeout_num +error_num)/total_num *100)
 
+      # 実行時間の計算
+      process_time = 0
+      for i in log_df['Progress']:
+         if i == 'Time_out':
+            process_time += float(max_search_time)
+         if i != 'Error' and i != 'Time_out':
+            process_time += float(i)
+
       # 進捗状況表示
-      st.write(f'進捗率：{finish_ratio} %')
+      st.write('--------------')
+      st.subheader(f'現在の進捗率：{finish_ratio} %')
       st.progress(finish_ratio,text='')
+      st.write(f'実行時間：{round(process_time/60,1)} 時間')
+      st.write('--------------')
       st.markdown("""#### (内訳)""")
-      st.write(f'総解析：{total_num} 個')
+      st.write(f'総解析数：{total_num} 個')
       st.write(f'データ生成：{success_num} 個 ({round(success_num/total_num*100,1)}%)')
       st.write(f'エラー：{error_num} 個 ({round(error_num/total_num*100,1)}%)')
       st.write(f'解析中断：{timeout_num} 個 ({round(timeout_num/total_num*100,1)}%)')
+      st.write('--------------')
+
+      # logダウンローダー生成
+      log_df.to_csv(buf := BytesIO(), index=True)
+      st.download_button("logダウンロード",buf.getvalue(),f'log_{select_result}.csv',"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+   
+
+
+
          
 def view_structure(dataframe):
  
