@@ -153,19 +153,23 @@ def ready_ligand_smiles():
       smiles_data_list = []
     
       if smile_1 != '入力':
-        convert_smiles(smile_1,lname_1,ligand_path2)
+        subprocess.run(["python",f"{file_path}/convert_sdf.py",lname_1,smile_1,ligand_path2])            
+        subprocess.run(["python",f"{file_path}/convert_pdbqt.py",ligand_path2])
         smiles_data_list.append(t_data1)
       if smile_2 != '入力':
-        convert_smiles(smile_2,lname_2,ligand_path2)
-        smiles_data_list.append(t_data2)
+        subprocess.run(["python",f"{file_path}/convert_sdf.py",lname_2,smile_2,ligand_path2])            
+        subprocess.run(["python",f"{file_path}/convert_pdbqt.py",ligand_path2])
       if smile_3 != '入力':
-        convert_smiles(smile_3,lname_3,ligand_path2)
+        subprocess.run(["python",f"{file_path}/convert_sdf.py",lname_3,smile_3,ligand_path2])            
+        subprocess.run(["python",f"{file_path}/convert_pdbqt.py",ligand_path2])
         smiles_data_list.append(t_data3)
       if smile_4 != '入力':
-        convert_smiles(smile_4,lname_4,ligand_path2)
+        subprocess.run(["python",f"{file_path}/convert_sdf.py",lname_4,smile_4,ligand_path2])            
+        subprocess.run(["python",f"{file_path}/convert_pdbqt.py",ligand_path2])
         smiles_data_list.append(t_data4)
       if smile_5 != '入力':
-        convert_smiles(smile_5,lname_5,ligand_path2)
+        subprocess.run(["python",f"{file_path}/convert_sdf.py",lname_5,smile_5,ligand_path2])            
+        subprocess.run(["python",f"{file_path}/convert_pdbqt.py",ligand_path2])
         smiles_data_list.append(t_data5)
       
       if not smiles_data_list:
@@ -340,7 +344,6 @@ def confirm_progress():
    add = ['-選択-']
    result_list2 = add + result_list
    select_result = st.selectbox('解析データ選択',result_list2)
-   max_search_time = st.number_input('解析時間の上限値(分)',20)
 
    go = st.button('解析状況の確認')
    if go:
