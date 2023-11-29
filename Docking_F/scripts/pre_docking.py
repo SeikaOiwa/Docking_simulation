@@ -152,26 +152,27 @@ binding_cite,search_area,exhaustiveness = read_docking_condition(save_f_path)
 data_num = 10
 save_path = f'{save_f_path}/{lig_name}.pdbqt'
 max_search_time = 20*60
-result,analysis_time = simulation(file_path,denzyme_path,dligand_path,binding_cite,search_area,exhaustiveness,data_num,save_path,max_search_time)
+result,analysis_ = simulation(file_path,denzyme_path,dligand_path,binding_cite,search_area,exhaustiveness,data_num,save_path,max_search_time)
 
 # log出力
-col_n = "Enzyme Ligand Progress"
+col_n = "Enzyme Ligand Progress comment"
 
 if result == 'finish':
     subprocess.run(["python",f"{file_path}/input_log.py",
     save_f_path,
     col_n,
-    f"{en_name} {lig_name} {str(analysis_time)}"]) 
+    f"{en_name} {lig_name} {str(analysis_)} none"]) 
 
 if result == 'Error':
+    analysis = analysis_.replace(" ","-") # エラーメッセージ中のスペースを"-"で置換
     subprocess.run(["python",f"{file_path}/input_log.py",
     save_f_path,
     col_n,
-    f"{en_name} {lig_name} Error"])           
+    f"{en_name} {lig_name} Error {analysis}"])           
 
 if result == 'time_out':
     subprocess.run(["python",f"{file_path}/input_log.py",
     save_f_path,
     col_n,
-    f"{en_name} {lig_name} Time_out"])    
+    f"{en_name} {lig_name} Time_out none"])    
     
