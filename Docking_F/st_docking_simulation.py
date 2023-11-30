@@ -266,7 +266,7 @@ def docking_simulation():
    fname = st.text_input('(任意)','docking_result')
    
    st.markdown(""" - プロセス条件の設定 """)   
-   process_num = st.slider('プロセス数',1,100,1,1)
+   process_num = st.slider('プロセス数',1,5,1,1)
    max_search_time_ = st.slider('解析時間の上限(分)',1,60,20,1)
    max_search_time = max_search_time_ * 60
 
